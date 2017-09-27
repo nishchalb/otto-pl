@@ -83,6 +83,14 @@ def feature_vector_from_track(sp, track):
 
 
 def use_user(username):
+    """ Create an authorized spotipy client for the given user
+
+    Args:
+        username (string): The user's spotify ID
+
+    Returns:
+        spotipy.client.Spotify: A spotipy client with an auth token
+    """
     token = util.prompt_for_user_token(username)
     if token:
         sp = spotipy.Spotify(auth=token)
@@ -92,27 +100,59 @@ def use_user(username):
 
 
 def get_distribution(sp, playlist):
+    """ Create a mutivariate normal distribution using the tracks in the 
+    specified playlist.
+
+    Args:
+        sp (spotipy.client.Spotify): A spotipy client with an auth token
+        playlist (dict): A dictionary representing a spotify playlist
+
+    Returns:
+        scipy.stats.multivariate_normal: A multivariate normal distribution with 
+            mean and covariance estimated based on playlist
+    """
     tracks = get_tracks_from_playlist(sp, playlist)
     num_features = len(feature_vector_from_track(sp, tracks[0]))
     data = np.zeros((len(tracks), num_features))
     for index, track in enumerate(tracks):
         vector = feature_vector_from_track(sp, track)
+        vector = map(lambda x: 0 if x is None else x, vector)
         data[index, :] = np.asarray(vector)
     mean = np.mean(data, axis=0)
-    cov = np.cov(data.transpose())
+    cov = np.cov(data, rowvar=False)
     # return data
     return scipy.stats.multivariate_normal(mean=mean, cov=cov,
                                            allow_singular=True)
 
 
 def log_likelihood_track_playlist(sp, track, playlist):
-    print playlist['name']
+    """ Return the log likelihood that a given track was generated from the same
+    distribution as a multivariate normal estimated from a given playlist
+
+    Args:
+        sp (spotipy.client.Spotify): A spotipy client with an auth token
+        track (dict): A dictionary representing a spotify track object
+        playlist (dict): A dictionary representing a spotify playlist
+
+    Returns:
+        float: The log likelihood that track belongs in playlist
+    """
+    # print playlist['name']
     dist = get_distribution(sp, playlist)
     track_vector = feature_vector_from_track(sp, track)
     return dist.logpdf(track_vector)
 
 
 def log_likelihoods_for_track(sp, track, playlists):
+    """ Return a sorted list of the log likelihoods that a given track came from
+    a playlist in playlists
+
+    Args:
+        sp (spotipy.client.Spotify): A spotipy client with an auth token
+        track (dict): A dictionary representing a spotify track object
+        playlist (list(dict)): A list of dictionaries representing spotify
+            playlists
+    """
     results = []
     for playlist in playlists:
         likelihood = log_likelihood_track_playlist(sp, track, playlist)

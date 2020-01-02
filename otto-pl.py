@@ -57,7 +57,7 @@ def feature_vector_from_track(sp, track):
     """ Construct a feature vector from a given track
 
     Args:
-        sp (spotipy.client.Spotify): A spotipy client with an auth token
+        sp (spotipy.client.Spotify): A spotipy client with an auth token // This is a bit odd that the sp client is an argument. Making this an OOP method or directly passing in only sp.audio_features seems to make more sense.  
         track (dict): A dictionary representing a spotify track object
 
     Returns:
@@ -116,10 +116,10 @@ def get_distribution(sp, playlist):
     data = np.zeros((len(tracks), num_features))
     for index, track in enumerate(tracks):
         vector = feature_vector_from_track(sp, track)
-        vector = map(lambda x: 0 if x is None else x, vector)
+        vector = [0 if x is None else x for x in vector]
         data[index, :] = np.asarray(vector)
-    mean = np.mean(data, axis=0)
-    cov = np.cov(data, rowvar=False)
+    mean = np.mean(data, axis=0)  # I'm curious how meaningful this is for time signature and tempo
+    cov = np.cov(data, rowvar=False)  # Are any of the features categorical? If so, cov might get messed up.
     # return data
     return scipy.stats.multivariate_normal(mean=mean, cov=cov,
                                            allow_singular=True)
